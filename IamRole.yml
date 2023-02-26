@@ -12,9 +12,6 @@ Parameters:
     Description: The name that is prefixed to resource names
     Type: String
     Default: nas
-# Mappings:
-
-# Conditions:
 
 Resources:
   MyIamGroup:
