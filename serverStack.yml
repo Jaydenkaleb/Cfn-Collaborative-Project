@@ -29,12 +29,17 @@ Parameters:
     Type: String
     Description: NetworkStack
     Default: networkStack #exported stack name
-
-  IamRoleStack:
+  
+  FileSystemStack:
+    Type: String
+    Description: filesystemStack-EfsId
+    Default: filesystemStack #exported stack name
+      
+  PermissionStack:
     Type: String
     Description: IAM Roles and Permissions Stack
-    Default: IamRoleStack #exported stack name
-      
+    Default: permissionStack #exported stack name
+    
   KeyName:
     Type: "AWS::EC2::KeyPair::KeyName"
   
@@ -54,7 +59,6 @@ Mappings:
     ca-central-1:
       web: ami-0ee679ef733e3b8e7
       app: ami-017f4811a06d3e510
-
 Resources:
 # Launch Template
   NaslaunchTemplate:
@@ -65,7 +69,7 @@ Resources:
         IamInstanceProfile:
           Arn:
             Fn::ImportValue:
-              !Sub '${IamRoleStack}-Arn'
+              !Sub '${PermissionStack}-Arn'
         DisableApiTermination: true
         ImageId:
           !FindInMap [RegionMap, !Ref AWS::Region, web]
@@ -81,9 +85,13 @@ Resources:
             yum install -y httpd
             systemctl start httpd
             systemctl enable httpd
-            echo '<center><h1 style="color:blue;font-size:300%;border:2px solid blue;background-color:lightgrey;">Welcome to NAS Financial Group </h1></center>' > /var/www/html/index.html
+            FileSystemStack:
+              Fn::ImportValue:
+                !Sub "${FileSystemStack}-EfsId"
+            echo '<center><h1 style="color:blue;font-size:300%;border:2px solid blue;background-color:lightgrey;">Welcome to NAS Financial Group ${FileSystemStack}</h1></center>' > /var/www/html/index.html
+            
 
-# NAS AutoScaling Group
+  # AutoScaling Group
   NasASG:
     Type: AWS::AutoScaling::AutoScalingGroup
     DependsOn:
@@ -94,9 +102,9 @@ Resources:
       LaunchTemplate:
         LaunchTemplateId: !Ref NaslaunchTemplate
         Version: !GetAtt NaslaunchTemplate.LatestVersionNumber
-      MaxSize: '4'
+      MaxSize: '5'
       MinSize: '1'
-      DesiredCapacity: '2'
+      DesiredCapacity: '3'
       VPCZoneIdentifier:
         - Fn::ImportValue:
               Fn::Sub: "${NetWorkStack}-PublicsubnetOneId"
@@ -107,14 +115,13 @@ Resources:
       TargetGroupARNs:
         - !Ref ELBTargetGroup
 
-#NAS Target Group
+# Target Group
   ELBTargetGroup:
     Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
     Properties:
       HealthCheckIntervalSeconds: 30
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
-      Name: frontend-web-TG
       Port: 80
       Protocol: HTTP
       UnhealthyThresholdCount: 2
@@ -169,7 +176,6 @@ Resources:
       Port: 80
       Protocol: HTTP
 
-
   # HTTPSListener:
   #   Type: "AWS::ElasticLoadBalancingV2::Listener"
   #   Properties:
@@ -186,36 +192,13 @@ Resources:
   #           Order: 1
   #           TargetGroupArn: !Ref Test1TargetGroup
   #           Type: "forward"
-
-
-  # AsgConfig:
-  #   Type: AWS::AutoScaling::LaunchConfiguration
+  # ElbListener:
+  #   Type: 'AWS::ElasticLoadBalancingV2::Listener'
   #   Properties:
-  #     InstanceType: !Ref InstanceType
-  #     SecurityGroups:
-  #     - !Ref FrontWebSg
-  #     ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", HVM64]
-  #     UserData:
-  #       Fn::Base64: 
-  #         !Sub |
-  #           #!/bin/bash
-  #           yum update -y
-  #           yum install -y httpd
-  #           systemctl start httpd
-  #           systemctl enable httpd
-  #           echo "<html><body><h1>Welcome to Nas Finanacial ${AWS::Region}<h1></body></html>" > /var/www/html/index.html
-    #     AsgGroup:
-    #       Type: AWS::AutoScaling::AutoScalingGroup
-    #       DependsOn:
-    #         - ELBTargetGroup
-    #         - ElasticLoadBalancer
-    #       Properties:
-    #         #PropagateAtLaunch: 'true'
-    #         VPCZoneIdentifier: !Ref PublicSubnets
-    #         LaunchConfigurationName: !Ref AsgConfig
-    #         MinSize: '2'
-    #         MaxSize: '4'
-    #         HealthCheckGracePeriod: 300
-    #         MaxInstanceLifetime: 2592000
-    #         TargetGroupARNs:
-    #           - !Ref ELBTargetGroup
+  #     DefaultActions:
+  #       - Type: forward
+  #         TargetGroupArn: !Ref ELBTargetGroup
+  #     LoadBalancerArn: !Ref FrontEndAlb
+  #     Port: 80
+  #     Protocol: HTTP
+  
