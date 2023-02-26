@@ -21,14 +21,7 @@ Parameters:
     Description: New account password
     MinLength: '1'
     MaxLength: '41'
-    ConstraintDescription: the password must be between 1 and 41 characters
-  
-  # UserGroup:
-  #   Type: List
-  #   AllowedValues:
-  #     - Engineering_Team1
-  #     - Security_Team1
-  #     - Operations_Team1
+    ConstraintDescription: the password must be between 1 and 41 character
 
 Resources:
   MyIamGroup:
