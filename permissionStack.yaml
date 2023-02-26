@@ -10,9 +10,7 @@ Parameters:
       - User1
       - User2
       - User3
-    # MinLength: '4'
-    # MaxLength: '10'
-    # ConstraintDescription: Must be a comma separated list of IAM User names (user1,user2,user3)
+
     
 
   Password:
